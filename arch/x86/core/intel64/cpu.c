@@ -20,6 +20,8 @@
 #include <zephyr/acpi/acpi.h>
 #endif
 
+#define WORKHORSE_ENABLED 1
+
 /*
  * Map of CPU logical IDs to CPU local APIC IDs. By default,
  * we assume this simple identity mapping, as found in QEMU.
@@ -67,6 +69,10 @@ void arch_cpu_start(int cpu_num, k_thread_stack_t *stack, int sz,
 	uint8_t apic_id;
 
 	IF_ENABLED(CONFIG_ACPI, ({
+
+#	if WORKHORSE_ENABLED
+		x86_cpu_loapics[cpu_num] = cpu_num;
+#	else 
 		ACPI_MADT_LOCAL_APIC *lapic = acpi_local_apic_get(cpu_num);
 
 		if (lapic != NULL) {
@@ -79,6 +85,7 @@ void arch_cpu_start(int cpu_num, k_thread_stack_t *stack, int sz,
 			__ASSERT(false, "CPU reached more than maximum supported!");
 			return;
 		}
+#	endif
 	}));
 
 	apic_id = x86_cpu_loapics[cpu_num];

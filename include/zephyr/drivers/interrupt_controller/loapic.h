@@ -13,6 +13,8 @@
 #include <zephyr/arch/x86/msr.h>
 #include <zephyr/sys/device_mmio.h>
 
+#define WORKHORSE_ENABLED 1
+
 /* Local APIC Register Offset */
 
 #define LOAPIC_ID 0x020		  /* Local APIC ID Reg */
@@ -94,7 +96,7 @@ static inline uint32_t x86_read_xapic(unsigned int reg)
  * @brief Read value from the local APIC using the default mode.
  *
  * Returns a 32-bit value read from the local APIC, using the access
- * method determined by CONFIG_X2APIC (either xAPIC or x2APIC). Note
+ * method determined by WORKHORSE_ENABLED (either xAPIC or x2APIC). Note
  * that 64-bit reads are only allowed in x2APIC mode and can only be
  * done by calling x86_read_x2apic() directly. (This is intentional.)
  *
@@ -102,7 +104,7 @@ static inline uint32_t x86_read_xapic(unsigned int reg)
  */
 static inline uint32_t x86_read_loapic(unsigned int reg)
 {
-#ifdef CONFIG_X2APIC
+#ifdef WORKHORSE_ENABLED
 	return x86_read_x2apic(reg);
 #else
 	return x86_read_xapic(reg);
@@ -138,7 +140,7 @@ static inline void x86_write_xapic(unsigned int reg, uint32_t val)
  * @brief Write 32-bit value to the local APIC using the default mode.
  *
  * Write a 32-bit value to the local APIC, using the access method
- * determined by CONFIG_X2APIC (either xAPIC or x2APIC). Note that
+ * determined by WORKHORSE_ENABLED (either xAPIC or x2APIC). Note that
  * 64-bit writes are only available in x2APIC mode and can only be
  * done by calling x86_write_x2apic() directly. (This is intentional.)
  *
@@ -147,7 +149,7 @@ static inline void x86_write_xapic(unsigned int reg, uint32_t val)
  */
 static inline void x86_write_loapic(unsigned int reg, uint32_t val)
 {
-#ifdef CONFIG_X2APIC
+#ifdef WORKHORSE_ENABLED
 	x86_write_x2apic(reg, val);
 #else
 	x86_write_xapic(reg, val);
@@ -165,7 +167,7 @@ static inline void z_loapic_ipi(uint8_t apic_id, uint32_t ipi, uint8_t vector)
 {
 	ipi |= vector;
 
-#ifndef CONFIG_X2APIC
+#ifndef WORKHORSE_ENABLED
 	/*
 	 * Legacy xAPIC mode: first wait for any previous IPI to be delivered.
 	 */

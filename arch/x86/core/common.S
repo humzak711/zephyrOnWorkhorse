@@ -6,6 +6,8 @@
 #include <zephyr/arch/x86/multiboot.h>
 #include <zephyr/devicetree.h>
 
+#define WORKHORSE_ENABLED 1
+
 /*
  * This is included by ia32/crt0.S and intel64/locore.S
  * at their 32-bit entry points to cover common ground.
@@ -59,10 +61,13 @@ end_cmdline:
 	 * can't actually disable them, but we mask all their interrupt
 	 * sources which is effectively the same thing (almost).
 	 */
-
+#if WORKHORSE_ENABLED
+	nop
+#else
 	movb $0xff, %al
 	outb %al, $0x21
 	outb %al, $0xA1
+#endif
 #endif
 
 #ifdef CONFIG_MULTIBOOT

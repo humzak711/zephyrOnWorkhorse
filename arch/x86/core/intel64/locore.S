@@ -111,11 +111,36 @@
  * scribble over it with 8 0x90 bytes (which is the 1-byte NOP) and be
  * sure to get all of it without overwriting anything.
  */
+
+#define WORKHORSE_ENABLED 1
+
+#if WORKHORSE_ENABLED
+/* WORKHORSE: PATCH TO .CODE16, JUMP TO _START16 TO HANDLE ENTRY TO _START32 */
+.section .locore,"ax"
+.code16
+.globl __start
+__start:
+	jmp __start16 
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+#else
 .section .locore,"ax"
 .code32
 .globl __start
 __start:
 	jmp __start32
+#endif
 	nop
 	nop
 	nop
@@ -151,9 +176,16 @@ x86_ap_start:
 	 * so we can locate our x86_cpuboot[] bundle. Put it in EBP.
 	 */
 
+
+#if WORKHORSE_ENABLED
+	/* WORKHORSE: PATCH TO RDMSR APIC ID DUE TO US BEING LOCKED TO X2APIC */
+	movl $0x802, %ecx
+	rdmsr
+#else 
 	movl LOAPIC_BASE_ADDRESS+LOAPIC_ID, %eax
 	shrl $24, %eax
 	andl $0xFF, %eax		/* local APIC ID -> EAX */
+#endif 
 
 	movl $x86_cpuboot, %ebp
 	xorl %ebx, %ebx
@@ -167,6 +199,25 @@ x86_ap_start:
 
 unknown_loapic_id:
 	jmp unknown_loapic_id
+
+#if WORKHORSE_ENABLED
+.code16
+__start16:
+	lgdt gdt48
+	lidt idt48
+	movl %cr0, %eax
+	or $1, %eax
+	movl %eax, %cr0
+	jmpl $X86_KERNEL_CS_32, $1f
+.code32
+1:	movw $X86_KERNEL_DS_32, %ax
+	movw %ax, %ds
+	movw %ax, %es
+	movw %ax, %ss
+	movw %ax, %fs
+	nop 
+	jmp __start32
+#endif
 
 .code32
 .globl __start32
@@ -188,8 +239,13 @@ __start32:
 	movb $0x90, 7(%ebp)
 	wbinvd
 
+#if WORKHORSE_ENABLED
+	/* WORKHORSE: LGDT & LIDT NOT NEEDED HERE */
+	nop
+#else
 	lgdt gdt48
 	lidt idt48
+#endif
 
 #include "../common.S"
 
@@ -298,12 +354,16 @@ __start64:
 
 	install_pagetables_64
 
+#if WORKHORSE_ENABLED
+	nop
+#else
 	/* Disable 8259 PIT.  Almost certainly not needed on modern
 	 * UEFI platforms taking this code path, but...
 	 */
-	movb $0xff, %al
-	outb %al, $0x21
-	outb %al, $0xA1
+	//movb $0xff, %al
+	//outb %al, $0x21
+	//outb %al, $0xA1
+#endif
 
 	movq $x86_cpu_boot_arg, %rbp
 	/* Inserting boot type */
